@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+    <title>Realtime Chat</title>
+
+```
+<style>
+    body {
+        margin: 0;
+        font-family: "Segoe UI", sans-serif;
+        background: #0f172a;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+    }
+
+    /* 🔥 NEW WRAPPER */
+    .app-container {
+        display: flex;
+        gap: 20px;
+    }
+
+    .chat-container {
+        width: 420px;
+        height: 600px;
+        background: #1e293b;
+        border-radius: 16px;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+    }
+    .toast {
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        background: #ef4444;
+        color: white;
+        padding: 12px 16px;
+        border-radius: 8px;
+        font-size: 14px;
+        opacity: 0;
+        pointer-events: none;
+        transform: translateY(20px);
+        transition: all 0.3s ease;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    }
+
+    .toast.show {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    /* 🔥 SIDEBAR */
+    .sidebar {
+        width: 220px;
+        height: 580px;
+        background: #020617;
+        border-radius: 16px;
+        padding: 15px;
+        color: white;
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+    }
+
+    .sidebar h3 {
+        margin: 0;
+        font-size: 14px;
+        opacity: 0.7;
+    }
+
+    .sidebar-box {
+        height: 20px;
+        background: #1e293b;
+        padding: 10px;
+        border-radius: 10px;
+        font-size: 13px;
+    }
+
+    /* HEADER */
+    .header {
+        flex-shrink: 0;
+        background: #2563eb;
+        color: white;
+        padding: 12px 15px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .header-left {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .title {
+        font-weight: 600;
+        font-size: 16px;
+    }
+
+    .info {
+        font-size: 12px;
+        opacity: 0.85;
+    }
+
+    .clear-btn {
+        background: #ef4444;
+        border: none;
+        color: white;
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+
+        display: flex;              /* 🔥 FIX */
+        justify-content: center;    /* 🔥 center horizontally */
+        align-items: center;        /* 🔥 center vertically */
+
+        font-size: 16px;            /* slightly better fit */
+        line-height: 1;             /* 🔥 prevents vertical shift */
+
+        cursor: pointer;
+        padding: 0;                 /* 🔥 remove default button padding */
+    }
+
+    /* CHAT AREA */
+    #chat {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-height: 0;
+    }
+
+    .messages {
+        flex: 1;
+        min-height: 0; 
+        padding: 15px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    /* HIDE SCROLLBAR */
+    .messages::-webkit-scrollbar {
+        width: 0;
+    }
+    .messages {
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+
+    .message-row { display: flex; width: 100%; }
+    .me-row { justify-content: flex-end; }
+    .other-row { justify-content: flex-start; }
+
+    .bubble {
+        max-width: 70%;
+        padding: 10px 12px;
+        border-radius: 12px;
+        font-size: 14px;
+    }
+
+    .me { background: #3b82f6; color: white; }
+    .other { background: #334155; color: #e2e8f0; }
+
+    .bubble strong {
+        display: block;
+        font-size: 11px;
+        margin-bottom: 3px;
+        opacity: 0.7;
+    }
+
+    .input-area {
+        align-items: center;
+        display: flex;
+        padding: 10px;
+        border-top: 1px solid #334155;
+        background: #1e293b;
+    }
+
+    input {
+        align-items: center;
+        flex: 1;
+        padding: 10px;
+        border-radius: 8px;
+        border: none;
+        background: #0f172a;
+        color: white;
+    }
+
+    button.send-btn {
+        margin-left: 10px;
+        padding: 10px 14px;
+        background: #3b82f6;
+        border: none;
+        border-radius: 8px;
+        color: white;
+        cursor: pointer;
+    }
+    button {
+        align-items: center;
+        padding: 10px 14px;
+        background: #3b82f6;
+        border: none;
+        border-radius: 8px;
+        color: white;
+        cursor: pointer;
+    }
+
+    #login { padding: 20px; }
+    #login input {
+        display: flex;
+        align-items: center;
+        width: 93%;
+        margin-bottom: 10px;
+        padding: 10px;
+    }
+
+    .hidden { display: none; }
+</style>
+```
+
+</head>
+
+<body>
+
+<div class="app-container">
+
+```
+<!-- CHAT -->
+<div class="chat-container">
+    <div class="header">
+        <div class="header-left">
+            <div class="title">Realtime Chat</div>
+            <div class="info">
+                Room: <span id="roomName">-</span> |
+                Users: <span id="userCount">0</span>
+            </div>
+        </div>
+        <button class="clear-btn" onclick="clearDB()">X</button>
+    </div>
+
+    <div id="login">
+        <input id="username" placeholder="Username">
+        <input id="room" placeholder="Room">
+        <button onclick="connect()">Join</button>
+    </div>
+
+    <div id="chat" class="hidden">
+        <div id="messages" class="messages"></div>
+
+        <div class="input-area">
+            <input id="messageInput" placeholder="Type a message">
+            <button class="send-btn" onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+</div>
+
+<!-- 🔥 SIDEBAR -->
+<div class="sidebar">
+    <div>
+        <h3>Room</h3>
+        <div class="sidebar-box" id="sidebarRoom">-</div>
+    </div>
+
+    <div>
+        <h3>Users</h3>
+        <div class="sidebar-box" id="sidebarUsers">-</div>
+    </div>
+
+    <div>
+        <h3>Total Rooms</h3>
+        <div class="sidebar-box" id="roomCount"></div>
+    </div>
+    <div>
+        <h3>Available Rooms</h3>
+    <div class="sidebar-box" id="roomList"></div>
+</div>
+</div>
+```
+
+</div>
+
+<script>
+let ws;
+let currentUser = "";
+let users = new Set();
+let rooms = new Set();
+
+function updateRoomCount() {
+    fetch("/rooms/count")
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById("roomCount").innerText = data.count;
+        });
+}
+
+function connect() {
+    const username = document.getElementById("username").value;
+    const room = document.getElementById("room").value;
+
+    currentUser = username;
+    document.getElementById("roomName").innerText = room;
+    document.getElementById("sidebarRoom").innerText = room;
+
+    rooms.add(room);
+    document.getElementById("roomCount").innerText = rooms.size;
+
+    ws = new WebSocket("ws://localhost:8000/ws");
+
+    ws.onopen = () => {
+        ws.send(username);
+        ws.send(room);
+        updateRoomCount();
+        updateRoomList();
+    };
+
+    ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        updateRoomCount();
+        updateRoomList();
+
+        users.add(data.username);
+
+        document.getElementById("userCount").innerText = users.size;
+
+        // 🔥 update sidebar users
+        document.getElementById("sidebarUsers").innerText =
+            Array.from(users).join(", ");
+
+        const row = document.createElement("div");
+        row.classList.add("message-row");
+
+        const bubble = document.createElement("div");
+        bubble.classList.add("bubble");
+
+        if (data.username === currentUser) {
+            row.classList.add("me-row");
+            bubble.classList.add("me");
+        } else {
+            row.classList.add("other-row");
+            bubble.classList.add("other");
+        }
+
+        bubble.innerHTML = `<strong>${data.username}</strong>${data.message}`;
+
+        row.appendChild(bubble);
+        document.getElementById("messages").appendChild(row);
+
+        const messages = document.getElementById("messages");
+        messages.scrollTop = messages.scrollHeight;
+    };
+
+    document.getElementById("login").classList.add("hidden");
+    document.getElementById("chat").classList.remove("hidden");
+}
+
+function sendMessage() {
+    const input = document.getElementById("messageInput");
+
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+        showToast("Please join a room to send messages");
+        return;
+    }
+
+    if (input.value.trim() !== "") {
+        ws.send(input.value);
+        input.value = "";
+    }
+}
+function showToast(message) {
+    const toast = document.getElementById("toast");
+
+    toast.innerText = message;
+    toast.classList.add("show");
+
+    setTimeout(() => {
+        toast.classList.remove("show");
+    }, 2500);
+}
+
+function updateRoomList() {
+    fetch("/rooms")
+        .then(res => res.json())
+        .then(data => {
+            // const container = document.getElementById("roomList");
+            // container.innerHTML = "";
+
+            document.getElementById("roomList").innerText = data.rooms.join(", ");
+            
+            // document.getElementById("sidebarUsers").innerText =
+            // Array.from(users).join(", ");
+
+            data.rooms.forEach(room => {
+                const div = document.createElement("div");
+                div.innerText = room;
+
+                div.style.padding = "6px";
+                div.style.cursor = "pointer";
+                div.style.borderRadius = "6px";
+
+                div.onmouseenter = () => div.style.background = "#334155";
+                div.onmouseleave = () => div.style.background = "transparent";
+
+                // 🔥 click to auto-fill room input
+                // div.onclick = () => {
+                //     document.getElementById("room").value = room;
+                //     connect();
+                // };
+
+                container.appendChild(div);
+            });
+        });
+}
+
+
+function clearDB() {
+    if (confirm("Clear all messages?")) {
+        fetch("/clear")
+            .then(res => res.json())
+            .then(data => {
+                showToast(data.message); // 🔥 toast instead of alert
+                document.getElementById("messages").innerHTML = "";
+            })
+            .catch(() => {
+                showToast("Failed to clear messages");
+            });
+    }
+}
+
+document.addEventListener("keydown", function(e) {
+    if (e.key === "Enter") sendMessage();
+});
+window.onload = () => {
+    updateRoomCount();
+    updateRoomList();
+};
+</script>
+<div id="toast" class="toast"></div>
+</body>
+</html>
